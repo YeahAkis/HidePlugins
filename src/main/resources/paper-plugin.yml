@@ -4,3 +4,4 @@ main: org.notionsmp.hidePlugins.HidePlugins
 api-version: '1.19'
 author: "Akis (discord: yeahakis)"
 description: Hides plugins from players
+folia-supported: true
