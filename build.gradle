@@ -1,4 +1,5 @@
 plugins {
+    id 'xyz.jpenilla.run-paper' version '2.3.1'
     id 'com.gradleup.shadow' version '8.3.0'
     id 'java'
 }
@@ -31,6 +32,13 @@ java {
     targetCompatibility = javaVersion
     if (JavaVersion.current() < javaVersion) {
         toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    }
+}
+
+tasks {
+    runServer {
+        jvmArgs("-Dcom.mojang.eula.agree=true")
+        minecraftVersion("1.21.8")
     }
 }
 

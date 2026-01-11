@@ -16,3 +16,12 @@ disabled-commands:
   - bukkit:about
   - icanhasbukkit
   - bukkit:icanhasbukkit
+
+#customBlockMsg:
+#  - command: 'pl|plugins|bukkit:plugins|bukkit:pl'
+#    message: |-
+#      <hover:show_text:'<color:#349fda>ℹ What is a server plugin?</color><br>Server plugins can add new behavior to your server!<br>You can find new plugins on Paper\'s plugin repository, Hangar.<br><br>https://hangar.papermc.io/'><c:#349fda>ℹ</c> Server Plugins (2):</hover>
+#      <c:#ed8106>Bukkit Plugins:
+#      <dark_gray> -</dark_gray> <green>WorldEdit<white>, <green>WorldGuard<white>
+#  - command: 'ver|version|about'
+#    message: '<red>Version information is hidden.'
