@@ -71,3 +71,8 @@ publishMods {
         }
     }
 }
+
+tasks.register('publishPlugin') {
+    group = 'publishing'
+    dependsOn tasks.build, tasks.publishMods
+}

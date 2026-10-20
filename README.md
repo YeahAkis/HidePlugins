@@ -90,4 +90,4 @@ Your old config still loads, you'll just get a warning in console. To switch ove
 ./gradlew build
 ```
 
-The jar ends up in `build/libs`.
+The jar ends up in `build/libs`. `./gradlew publishPlugin` uploads it to Modrinth if `modrinthToken` is set.
