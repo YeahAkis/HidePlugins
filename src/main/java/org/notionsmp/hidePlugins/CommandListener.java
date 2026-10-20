@@ -1,73 +1,72 @@
 package org.notionsmp.hidePlugins;
 
-import net.kyori.adventure.text.Component;
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerCommandSendEvent;
+import org.bukkit.event.server.ServerLoadEvent;
 import org.bukkit.event.server.TabCompleteEvent;
 
-public class CommandListener implements Listener {
+import java.util.ArrayList;
+import java.util.List;
 
-    @EventHandler
-    public void onDisabledCommandExecution(PlayerCommandPreprocessEvent event) {
-        if (!event.getPlayer().hasPermission("hide_plugins.bypass")) {
-            String[] args = event.getMessage().split(" ");
-            if (args.length == 0) return;
-            String command = normalizeCommand(args[0]);
-            if (isDisabledCommand(command)) {
-                String message = HidePlugins.getInstance().getMessageForCommand(command);
-                Component msg = HidePlugins.getInstance().getMiniMessage().deserialize(message);
-                event.getPlayer().sendMessage(msg);
-                event.setCancelled(true);
-            }
-        }
+final class CommandListener implements Listener {
+
+    private final CommandFilter filter;
+
+    CommandListener(CommandFilter filter) {
+        this.filter = filter;
     }
 
-
-    @EventHandler
-    public void onTabComplete(TabCompleteEvent event) {
-        if (event.getSender().hasPermission("hide_plugins.bypass")) return;
-
-        String buffer = event.getBuffer();
-        if (buffer.startsWith("/")) {
-            String[] parts = buffer.split(" ", 2);
-            String command = normalizeCommand(parts[0]);
-            if (isDisabledCommand(command)) {
-                event.setCancelled(true);
-            }
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onCommand(PlayerCommandPreprocessEvent event) {
+        Player player = event.getPlayer();
+        String input = event.getMessage().startsWith("/") ? event.getMessage().substring(1) : event.getMessage();
+        String rule = filter.match(input.split(" ", 2)[0]);
+        if (rule == null || filter.canBypass(player, rule)) {
+            return;
         }
+
+        event.setCancelled(true);
+        filter.reply(player, rule, input);
     }
 
     @EventHandler
+    public void onServerLoad(ServerLoadEvent event) {
+        filter.reindex();
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onCommandSend(PlayerCommandSendEvent event) {
-        if (event.getPlayer().hasPermission("hide_plugins.bypass")) return;
-
-        event.getCommands().removeIf(this::isDisabledCommand);
+        filter.reindex();
+        Player player = event.getPlayer();
+        event.getCommands().removeIf(name -> !filter.isVisible(name, player));
     }
 
-    private boolean isDisabledCommand(String command) {
-        String cmd = normalizeCommand(command);
-        if (cmd.isEmpty()) return false;
-        HidePlugins plugin = HidePlugins.getInstance();
-        for (String disabledCmd : plugin.getDisabledCommands()) {
-            if (disabledCmd.equalsIgnoreCase(cmd)) {
-                return true;
-            }
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onTabComplete(TabCompleteEvent event) {
+        List<String> completions = filtered(event.getSender(), event.getBuffer(), event.getCompletions());
+        if (completions == null) {
+            event.setCancelled(true);
+        } else if (completions != event.getCompletions()) {
+            event.setCompletions(completions);
         }
-        for (String customCmd : plugin.getCommandMessages().keySet()) {
-            if (customCmd.equalsIgnoreCase(cmd)) {
-                return true;
-            }
-        }
-        return false;
     }
 
-    private String normalizeCommand(String rawCommand) {
-        String cmd = rawCommand.toLowerCase();
-        if (cmd.startsWith("/")) {
-            cmd = cmd.substring(1);
+    private List<String> filtered(CommandSender sender, String buffer, List<String> completions) {
+        if (!buffer.startsWith("/")) {
+            return completions;
         }
-        return cmd.trim();
+
+        int space = buffer.indexOf(' ');
+        if (space >= 0) {
+            return filter.isHidden(buffer.substring(1, space), sender) ? null : completions;
+        }
+
+        List<String> visible = new ArrayList<>(completions);
+        return visible.removeIf(label -> !filter.isVisible(label, sender)) ? visible : completions;
     }
 }
