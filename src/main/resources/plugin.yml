@@ -1,0 +1,22 @@
+name: HidePlugins
+version: '${version}'
+main: org.notionsmp.hidePlugins.HidePlugins
+api-version: '1.18'
+author: Akis
+description: Hides your plugins and server info from players
+folia-supported: true
+
+commands:
+  hideplugins:
+    description: HidePlugins admin command
+    usage: /<command> reload
+    aliases: [hp]
+    permission: hideplugins.admin
+
+permissions:
+  hideplugins.admin:
+    description: Use /hideplugins
+    default: op
+  hideplugins.bypass:
+    description: See and use every hidden command
+    default: op

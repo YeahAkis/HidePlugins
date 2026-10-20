@@ -1,56 +1,59 @@
 package org.notionsmp.hidePlugins;
 
-import co.aikar.commands.PaperCommandManager;
-import lombok.Getter;
-import net.kyori.adventure.text.minimessage.MiniMessage;
+import org.bukkit.command.PluginCommand;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
-import java.util.*;
 
-@Getter
 public final class HidePlugins extends JavaPlugin {
-    @Getter
-    private static HidePlugins instance;
-    private PaperCommandManager commandManager;
-    private MiniMessage miniMessage;
-    private String defaultBlockMsg;
-    private Map<String, String> commandMessages;
-    private Set<String> disabledCommands;
 
+    private static final boolean FOLIA = classExists("io.papermc.paper.threadedregions.RegionizedServer");
+
+    private volatile Settings settings;
+    private CommandFilter filter;
 
     @Override
     public void onEnable() {
-        instance = this;
-        this.miniMessage = MiniMessage.miniMessage();
-
         saveDefaultConfig();
-        reloadConfigValues();
+        settings = Settings.load(getConfig(), getLogger());
 
-        this.commandManager = new PaperCommandManager(this);
-        commandManager.registerCommand(new HidePluginsCommand());
+        filter = new CommandFilter(this);
+        filter.reindex();
+        getServer().getPluginManager().registerEvents(new CommandListener(filter), this);
+        if (classExists("com.destroystokyo.paper.event.brigadier.AsyncPlayerSendSuggestionsEvent")) {
+            getServer().getPluginManager().registerEvents(new SuggestionListener(filter), this);
+        }
 
-        getServer().getPluginManager().registerEvents(new CommandListener(), this);
+        PluginCommand command = getCommand("hideplugins");
+        if (command != null) {
+            HidePluginsCommand executor = new HidePluginsCommand(this, filter);
+            command.setExecutor(executor);
+            command.setTabCompleter(executor);
+        }
     }
 
-    public void reloadConfigValues() {
+    public Settings settings() {
+        return settings;
+    }
+
+    public void reload() {
         reloadConfig();
-        this.defaultBlockMsg = getConfig().getString("blockMsg", "<red>You are not allowed to use this command");
-        this.disabledCommands = new HashSet<>(getConfig().getStringList("disabled-commands"));
-        this.commandMessages = new HashMap<>();
-        if (getConfig().contains("customBlockMsg")) {
-            for (Map<?, ?> map : getConfig().getMapList("customBlockMsg")) {
-                String commands = (String) map.get("command");
-                String message = (String) map.get("message");
-                if (commands != null && message != null) {
-                    for (String cmd : commands.split("\\|")) {
-                        commandMessages.put(cmd.trim().toLowerCase(), message);
-                    }
-                }
+        settings = Settings.load(getConfig(), getLogger());
+        filter.reindex();
+        for (Player player : getServer().getOnlinePlayers()) {
+            if (FOLIA) {
+                player.getScheduler().run(this, task -> player.updateCommands(), null);
+            } else {
+                getServer().getScheduler().runTask(this, player::updateCommands);
             }
         }
     }
 
-    public String getMessageForCommand(String command) {
-        String cmd = command.toLowerCase();
-        return commandMessages.getOrDefault(cmd, defaultBlockMsg);
+    static boolean classExists(String name) {
+        try {
+            Class.forName(name);
+            return true;
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
     }
 }
